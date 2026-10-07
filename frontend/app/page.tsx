@@ -1,18 +1,34 @@
+"use client";
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Mic, MessageSquareText, ShieldCheck, Languages, BellRing, Sparkles } from 'lucide-react';
-
-const services = [
-  'Income Certificate',
-  'Caste Certificate',
-  'Residence Certificate',
-  'Birth Certificate',
-  'Government Schemes',
-  'Licences'
-];
+import { fetchServices, sendAgentMessage } from '@/lib/api-client';
 
 const languages = ['Hindi', 'English', 'Bhojpuri', 'Bengali', 'Punjabi'];
 
 export default function HomePage() {
+  const [selectedLanguage, setSelectedLanguage] = useState('Hindi');
+  const [message, setMessage] = useState('Mujhe income certificate banana hai.');
+  const [status, setStatus] = useState('Ready');
+  const [loading, setLoading] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+
+  const handleStart = async () => {
+    setLoading(true);
+    setStatus('Processing your request...');
+    try {
+      const [items] = await Promise.all([fetchServices()]);
+      setServices(items.slice(0, 6));
+      const result = await sendAgentMessage(message, selectedLanguage);
+      setStatus(`Intent detected: ${result.intent?.serviceName ?? 'Income Certificate'}`);
+    } catch (error) {
+      setStatus('Service is temporarily unavailable. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto max-w-7xl px-6 py-8">
@@ -35,10 +51,22 @@ export default function HomePage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <button className="rounded-full border border-slate-700 px-3 py-2 text-sm text-slate-200">Hindi</button>
-            <Link href="/assistant" className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand-500/20">
-              Start now
-            </Link>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
+            >
+              {languages.map((language) => (
+                <option key={language} value={language}>{language}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleStart}
+              disabled={loading}
+              className="rounded-full bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Processing...' : 'Start now'}
+            </button>
           </div>
         </header>
 
@@ -68,10 +96,25 @@ export default function HomePage() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               {languages.map((language) => (
-                <span key={language} className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200">
+                <button
+                  key={language}
+                  type="button"
+                  onClick={() => setSelectedLanguage(language)}
+                  className={`rounded-full border px-3 py-1.5 text-sm ${selectedLanguage === language ? 'border-brand-500 bg-brand-500/10 text-brand-100' : 'border-slate-700 bg-slate-900 text-slate-200'}`}
+                >
                   {language}
-                </span>
+                </button>
               ))}
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <label className="mb-2 block text-sm text-slate-300">Sample request</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={3}
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none ring-0"
+              />
             </div>
           </div>
 
@@ -79,7 +122,7 @@ export default function HomePage() {
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">Voice assistant</h3>
               <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
-                Ready
+                {status}
               </span>
             </div>
 
@@ -92,11 +135,11 @@ export default function HomePage() {
             <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">
               <p className="flex items-center justify-between">
                 <span className="flex items-center gap-2"><Languages className="h-4 w-4" /> language</span>
-                <span className="text-slate-100">Hindi</span>
+                <span className="text-slate-100">{selectedLanguage}</span>
               </p>
               <p className="flex items-center justify-between">
                 <span className="flex items-center gap-2"><BellRing className="h-4 w-4" /> status</span>
-                <span className="text-slate-100">Listening</span>
+                <span className="text-slate-100">{loading ? 'Processing' : 'Listening'}</span>
               </p>
             </div>
           </aside>
@@ -109,15 +152,21 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            {services.map((service, index) => (
-              <div key={service} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            {(services.length ? services : [
+              'Income Certificate',
+              'Caste Certificate',
+              'Residence Certificate'
+            ]).map((service, index) => (
+              <div key={typeof service === 'string' ? service : service.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="rounded-full bg-brand-500/10 px-2 py-1 text-xs text-brand-100">Service {index + 1}</span>
                   <span className="text-xs text-emerald-400">Workflow ready</span>
                 </div>
-                <h4 className="text-xl font-semibold text-white">{service}</h4>
+                <h4 className="text-xl font-semibold text-white">{typeof service === 'string' ? service : service.name}</h4>
                 <p className="mt-2 text-sm text-slate-300">
-                  Eligibility, document guidance, consent, and application tracking are integrated for the service flow.
+                  {typeof service === 'string'
+                    ? 'Eligibility, document guidance, consent, and application tracking are integrated for the service flow.'
+                    : service.description}
                 </p>
               </div>
             ))}
