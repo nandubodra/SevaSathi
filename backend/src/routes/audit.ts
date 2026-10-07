@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import { auditTrail, getApplication, serviceCatalog } from '../services/workflow-engine.js';
+import { getApplication, serviceCatalog, auditTrail } from '../services/workflow-engine.js';
 
 export function createAuditRouter() {
   const router = Router();

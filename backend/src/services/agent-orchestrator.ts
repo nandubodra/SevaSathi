@@ -1,95 +1,54 @@
-import { v4 as uuid } from 'uuid';
+import { createApplication, getApplication, updateApplicationState, workflowTimeline, serviceCatalog, type ApplicationWorkflowState } from '../services/workflow-engine.js';
 
-export type WorkflowState =
-  | 'SERVICE_IDENTIFIED'
-  | 'ELIGIBILITY_CHECK'
-  | 'DOCUMENT_REQUIREMENTS'
-  | 'DOCUMENT_COLLECTION'
-  | 'DOCUMENT_VALIDATION'
-  | 'FORM_DATA_COLLECTION'
-  | 'FORM_GENERATION'
-  | 'USER_REVIEW'
-  | 'CONSENT'
-  | 'SUBMISSION'
-  | 'APPLICATION_TRACKING'
-  | 'CORRECTION_IF_REQUIRED'
-  | 'FINAL_VERIFICATION'
-  | 'CERTIFICATE_AVAILABLE';
+export type CitizenAction = 'VOICE' | 'TEXT' | 'DOCUMENT' | 'REVIEW' | 'CONSENT' | 'SUBMIT';
 
-export interface ServiceRule {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  eligibility: string[];
-  documents: string[];
-  languageSupport: string[];
-  version: string;
-}
-
-export const serviceCatalog: ServiceRule[] = [
-  {
-    id: 'income_certificate',
-    name: 'Income Certificate',
-    category: 'citizen-service',
-    description: 'Government-issued certificate confirming family or individual income status.',
-    eligibility: ['Resident of the jurisdiction', 'Applicant is above the legal age threshold for the service', 'No fraudulent/inconsistent record'],
-    documents: ['Identity proof', 'Address proof', 'Income proof', 'Photo', 'Declaration'],
-    languageSupport: ['Hindi', 'English', 'Bhojpuri', 'Bengali', 'Punjabi'],
-    version: 'v1.0'
-  },
-  {
-    id: 'caste_certificate',
-    name: 'Caste Certificate',
-    category: 'citizen-service',
-    description: 'Certificate establishing caste/community status for eligible citizens.',
-    eligibility: ['Valid identity', 'Relevant local eligibility rule', 'Documented family background'],
-    documents: ['Identity proof', 'Address proof', 'Birth certificate', 'Community documents', 'Declaration'],
-    languageSupport: ['Hindi', 'English', 'Bhojpuri', 'Bengali', 'Punjabi'],
-    version: 'v1.0'
-  }
-];
-
-export interface ApplicationRecord {
-  id: string;
-  userId: string;
+export interface AgentIntentResult {
   serviceId: string;
-  workflowState: WorkflowState;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  consentGiven: boolean;
+  serviceName: string;
+  category: string;
+  confidence: number;
+  language: string;
+  explanation: string;
 }
 
-const applications: ApplicationRecord[] = [];
+export function inferIntentFromMessage(message: string, language = 'Hindi'): AgentIntentResult {
+  const normalized = message.toLowerCase();
 
-export function createApplication(serviceId: string, userId = 'citizen-demo-user') {
-  const record: ApplicationRecord = {
-    id: uuid(),
-    userId,
-    serviceId,
-    workflowState: 'SERVICE_IDENTIFIED',
-    status: 'SUBMITTED',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    consentGiven: false
+  let serviceId = 'income_certificate';
+  let serviceName = 'Income Certificate';
+
+  if (normalized.includes('caste') || normalized.includes('jati')) {
+    serviceId = 'caste_certificate';
+    serviceName = 'Caste Certificate';
+  } else if (normalized.includes('residence') || normalized.includes('domicile') || normalized.includes('address')) {
+    serviceId = 'residence_certificate';
+    serviceName = 'Residence Certificate';
+  }
+
+  const service = serviceCatalog.find((entry) => entry.id === serviceId) ?? serviceCatalog[0];
+
+  return {
+    serviceId: service.id,
+    serviceName: service.name,
+    category: service.category,
+    confidence: 0.93,
+    language,
+    explanation: `SevaAgent identified ${service.name} as the likely service. It will guide you through eligibility, required documents, verification, and submission.`
   };
-
-  applications.push(record);
-  return record;
 }
 
-export function getApplication(applicationId: string) {
-  return applications.find((record) => record.id === applicationId);
+export function continueWorkflow(applicationId: string, nextState: ApplicationWorkflowState, status: string) {
+  const updated = updateApplicationState(applicationId, nextState, status);
+  if (!updated) {
+    return null;
+  }
+
+  return {
+    application: updated,
+    timeline: workflowTimeline[updated.id] ?? []
+  };
 }
 
-export function updateApplicationState(applicationId: string, workflowState: WorkflowState, status: string) {
-  const app = getApplication(applicationId);
-
-  if (!app) return null;
-
-  app.workflowState = workflowState;
-  app.status = status;
-  app.updatedAt = new Date().toISOString();
-  return app;
+export function createApplicationRecord(serviceId: string, userId = 'user-demo-1') {
+  return createApplication(serviceId, userId);
 }

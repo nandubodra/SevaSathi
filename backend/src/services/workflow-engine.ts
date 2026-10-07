@@ -9,6 +9,8 @@ export interface ServiceRule {
   documents: string[];
   languageSupport: string[];
   version: string;
+  authority?: string;
+  verificationRules?: string[];
 }
 
 export interface UserProfile {
@@ -18,11 +20,6 @@ export interface UserProfile {
   role: UserRole;
   preferredLanguage: string;
   createdAt: string;
-}
-
-export interface WorkflowState {
-  service: string;
-  status: string;
 }
 
 export type ApplicationWorkflowState =
@@ -114,10 +111,12 @@ export const serviceCatalog: ServiceRule[] = [
     name: 'Income Certificate',
     category: 'citizen-service',
     description: 'Government certificate confirming income status.',
-    eligibility: ['Resident of jurisdiction', 'Valid identity and address proof', 'No conflicting records'],
+    eligibility: ['Resident of the jurisdiction', 'Valid identity and address proof', 'No conflicting records'],
     documents: ['Identity proof', 'Address proof', 'Income proof', 'Photograph', 'Declaration'],
     languageSupport: ['Hindi', 'English', 'Bhojpuri', 'Bengali', 'Punjabi'],
-    version: 'v1.0'
+    version: 'v1.0',
+    authority: 'District Administration Office',
+    verificationRules: ['Format validation', 'OCR consistency', 'Cross-document check']
   },
   {
     id: 'caste_certificate',
@@ -127,7 +126,9 @@ export const serviceCatalog: ServiceRule[] = [
     eligibility: ['Valid identity', 'Eligibility under local rules', 'Required community proof'],
     documents: ['Identity proof', 'Address proof', 'Community documents', 'Declaration'],
     languageSupport: ['Hindi', 'English', 'Bhojpuri', 'Bengali', 'Punjabi'],
-    version: 'v1.0'
+    version: 'v1.0',
+    authority: 'Tehsil / Block Office',
+    verificationRules: ['Format validation', 'OCR consistency', 'Cross-document check']
   },
   {
     id: 'residence_certificate',
@@ -137,7 +138,9 @@ export const serviceCatalog: ServiceRule[] = [
     eligibility: ['Resident in the area for the applicable duration', 'Documented address'],
     documents: ['Address proof', 'Identity proof', 'Declaration'],
     languageSupport: ['Hindi', 'English', 'Bhojpuri', 'Bengali', 'Punjabi'],
-    version: 'v1.0'
+    version: 'v1.0',
+    authority: 'District / Municipal Authority',
+    verificationRules: ['Format validation', 'OCR consistency', 'Cross-document check']
   }
 ];
 
@@ -158,7 +161,7 @@ export const notifications: NotificationRecord[] = [
 export const auditTrail: AuditEvent[] = [];
 export const workflowTimeline: Record<string, Array<{ timestamp: string; state: string; status: string }>> = {};
 
-export function createApplication(serviceId: string, userId = 'user-demo-1') {
+export function createApplication(serviceId: string, userId = 'user-demo-1'): ApplicationRecord {
   const record: ApplicationRecord = {
     id: `app-${Date.now()}`,
     userId,
@@ -180,11 +183,15 @@ export function createApplication(serviceId: string, userId = 'user-demo-1') {
   return record;
 }
 
-export function getApplication(applicationId: string) {
+export function getApplication(applicationId: string): ApplicationRecord | null {
   return applications.find((app) => app.id === applicationId) ?? null;
 }
 
-export function updateApplicationState(applicationId: string, workflowState: ApplicationWorkflowState, status: string) {
+export function updateApplicationState(
+  applicationId: string,
+  workflowState: ApplicationWorkflowState,
+  status: string
+): ApplicationRecord | null {
   const app = getApplication(applicationId);
   if (!app) return null;
 
@@ -199,7 +206,12 @@ export function updateApplicationState(applicationId: string, workflowState: App
   return app;
 }
 
-export function addAuditEvent(applicationId: string, action: string, actor: 'citizen' | 'ai' | 'system', result: string) {
+export function addAuditEvent(
+  applicationId: string,
+  action: string,
+  actor: 'citizen' | 'ai' | 'system',
+  result: string
+): string {
   const previousHash = auditTrail.length ? auditTrail[auditTrail.length - 1].currentHash : 'genesis';
   const currentHash = `hash:${applicationId}:${action}:${Date.now()}:${previousHash}`;
 
@@ -217,18 +229,24 @@ export function addAuditEvent(applicationId: string, action: string, actor: 'cit
   return currentHash;
 }
 
-export type ApplicationWorkflowState =
-  | 'SERVICE_IDENTIFIED'
-  | 'ELIGIBILITY_CHECK'
-  | 'DOCUMENT_REQUIREMENTS'
-  | 'DOCUMENT_COLLECTION'
-  | 'DOCUMENT_VALIDATION'
-  | 'FORM_DATA_COLLECTION'
-  | 'FORM_GENERATION'
-  | 'USER_REVIEW'
-  | 'CONSENT'
-  | 'SUBMISSION'
-  | 'APPLICATION_TRACKING'
-  | 'CORRECTION_IF_REQUIRED'
-  | 'FINAL_VERIFICATION'
-  | 'CERTIFICATE_AVAILABLE';
+export function createNotification(input: {
+  userId: string;
+  title: string;
+  message: string;
+  channel?: string;
+  applicationId?: string | null;
+}): NotificationRecord {
+  const notification: NotificationRecord = {
+    id: `notification-${Date.now()}`,
+    userId: input.userId,
+    applicationId: input.applicationId ?? null,
+    title: input.title,
+    message: input.message,
+    channel: input.channel ?? 'in_app',
+    readAt: null,
+    createdAt: new Date().toISOString()
+  };
+
+  notifications.push(notification);
+  return notification;
+}
