@@ -1,6 +1,15 @@
-import { CurrentAppState, Invoice, ServiceRule, applicationConsents, applications, auditTrail, notifications, serviceCatalog, users, workflowTimeline } from './workflow-engine.js';
-
 export type UserRole = 'citizen' | 'helper' | 'admin';
+
+export interface ServiceRule {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  eligibility: string[];
+  documents: string[];
+  languageSupport: string[];
+  version: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -11,30 +20,12 @@ export interface UserProfile {
   createdAt: string;
 }
 
-export const users: UserProfile[] = [
-  {
-    id: 'user-demo-1',
-    email: 'citizen@example.com',
-    passwordHash: 'hash:password123',
-    role: 'citizen',
-    preferredLanguage: 'Hindi',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'helper-demo-1',
-    email: 'helper@example.com',
-    passwordHash: 'hash:password123',
-    role: 'helper',
-    preferredLanguage: 'English',
-    createdAt: new Date().toISOString()
-  }
-];
+export interface WorkflowState {
+  service: string;
+  status: string;
+}
 
-export const consentVersions = {
-  current: 'consent-v1.0'
-};
-
-export type WorkflowState =
+export type ApplicationWorkflowState =
   | 'SERVICE_IDENTIFIED'
   | 'ELIGIBILITY_CHECK'
   | 'DOCUMENT_REQUIREMENTS'
@@ -54,7 +45,7 @@ export interface ApplicationRecord {
   id: string;
   userId: string;
   serviceId: string;
-  workflowState: WorkflowState;
+  workflowState: ApplicationWorkflowState;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -82,6 +73,40 @@ export interface NotificationRecord {
   readAt: string | null;
   createdAt: string;
 }
+
+export interface AuditEvent {
+  id: string;
+  applicationId: string;
+  action: string;
+  timestamp: string;
+  actor: 'citizen' | 'ai' | 'system';
+  previousHash: string;
+  currentHash: string;
+  result: string;
+}
+
+export const users: UserProfile[] = [
+  {
+    id: 'user-demo-1',
+    email: 'citizen@example.com',
+    passwordHash: 'hash:password123',
+    role: 'citizen',
+    preferredLanguage: 'Hindi',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'helper-demo-1',
+    email: 'helper@example.com',
+    passwordHash: 'hash:password123',
+    role: 'helper',
+    preferredLanguage: 'English',
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const consentVersions = {
+  current: 'consent-v1.0'
+};
 
 export const serviceCatalog: ServiceRule[] = [
   {
@@ -130,7 +155,7 @@ export const notifications: NotificationRecord[] = [
     createdAt: new Date().toISOString()
   }
 ];
-export const auditTrail: Array<{ id: string; applicationId: string; action: string; timestamp: string; actor: 'citizen' | 'ai' | 'system'; previousHash: string; currentHash: string; result: string }> = [];
+export const auditTrail: AuditEvent[] = [];
 export const workflowTimeline: Record<string, Array<{ timestamp: string; state: string; status: string }>> = {};
 
 export function createApplication(serviceId: string, userId = 'user-demo-1') {
@@ -159,7 +184,7 @@ export function getApplication(applicationId: string) {
   return applications.find((app) => app.id === applicationId) ?? null;
 }
 
-export function updateApplicationState(applicationId: string, workflowState: WorkflowState, status: string) {
+export function updateApplicationState(applicationId: string, workflowState: ApplicationWorkflowState, status: string) {
   const app = getApplication(applicationId);
   if (!app) return null;
 
@@ -168,11 +193,7 @@ export function updateApplicationState(applicationId: string, workflowState: Wor
   app.updatedAt = new Date().toISOString();
 
   const entries = workflowTimeline[app.id] ?? [];
-  entries.push({
-    timestamp: app.updatedAt,
-    state: workflowState,
-    status
-  });
+  entries.push({ timestamp: app.updatedAt, state: workflowState, status });
   workflowTimeline[app.id] = entries;
 
   return app;
@@ -195,3 +216,19 @@ export function addAuditEvent(applicationId: string, action: string, actor: 'cit
 
   return currentHash;
 }
+
+export type ApplicationWorkflowState =
+  | 'SERVICE_IDENTIFIED'
+  | 'ELIGIBILITY_CHECK'
+  | 'DOCUMENT_REQUIREMENTS'
+  | 'DOCUMENT_COLLECTION'
+  | 'DOCUMENT_VALIDATION'
+  | 'FORM_DATA_COLLECTION'
+  | 'FORM_GENERATION'
+  | 'USER_REVIEW'
+  | 'CONSENT'
+  | 'SUBMISSION'
+  | 'APPLICATION_TRACKING'
+  | 'CORRECTION_IF_REQUIRED'
+  | 'FINAL_VERIFICATION'
+  | 'CERTIFICATE_AVAILABLE';

@@ -8,6 +8,12 @@ import { createServicesRouter } from './routes/services.js';
 import { createApplicationsRouter } from './routes/applications.js';
 import { createDocumentsRouter } from './routes/documents.js';
 import { createAdminRouter } from './routes/admin.js';
+import { createAuthRouter } from './routes/auth.js';
+import { createNotificationsRouter } from './routes/notifications.js';
+import { createConsentRouter } from './routes/consents.js';
+import { createWorkflowRouter } from './routes/workflow.js';
+import { createStatusRouter } from './routes/status.js';
+import { createAuditRouter } from './routes/audit.js';
 
 dotenv.config();
 
@@ -22,11 +28,17 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'sevaagent-backend' });
 });
 
+app.use('/api/auth', createAuthRouter());
 app.use('/api/agent', createAgentRouter());
 app.use('/api/services', createServicesRouter());
 app.use('/api/applications', createApplicationsRouter());
 app.use('/api/documents', createDocumentsRouter());
 app.use('/api/admin', createAdminRouter());
+app.use('/api/notifications', createNotificationsRouter());
+app.use('/api/consents', createConsentRouter());
+app.use('/api/workflow', createWorkflowRouter());
+app.use('/api/status', createStatusRouter());
+app.use('/api/audit', createAuditRouter());
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
