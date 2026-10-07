@@ -1,0 +1,71 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sevaagent-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sevaagent}
+      POSTGRES_USER: ${POSTGRES_USER:-sevaagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sevaagent}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sevaagent} -d ${POSTGRES_DB:-sevaagent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sevaagent-redis
+    ports:
+      - '6379:6379'
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sevaagent-backend
+    environment:
+      PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-change-in-production}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://sevaagent:sevaagent@postgres:5432/sevaagent}
+      AI_SERVICE_URL: http://ai-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - '4000:4000'
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: sevaagent-ai
+    ports:
+      - '8000:8000'
+    environment:
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      OCR_ENGINE: ${OCR_ENGINE:-tesseract}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sevaagent-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:4000
+      NEXT_PUBLIC_AI_URL: http://ai-service:8000
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+      - ai-service
+
+volumes:
+  postgres_data:
