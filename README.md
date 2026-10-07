@@ -216,32 +216,210 @@ The AI layer must never:
 - hide failed actions or errors
 - silently change user information
 
-## Local development
+## Prerequisites
 
-### Prerequisites
+Install before running the project:
 
 - Node.js 20+
+- npm or pnpm
 - Python 3.11+
-- Docker + Docker Compose
-- PostgreSQL (for production-ready persistence)
+- pip
+- Docker Desktop / Docker Engine + Docker Compose
+- PostgreSQL 15+ (for production-ready persistence)
+- Git
 
-### Environment setup
+## How to use this project
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/nandubodra/SevaSathi.git
+cd SevaSathi
+```
+
+### 2. Install frontend dependencies
+
+```bash
+cd frontend
+npm install
+```
+
+### 3. Install backend dependencies
+
+```bash
+cd ../backend
+npm install
+```
+
+### 4. Install AI service dependencies
+
+```bash
+cd ../ai-service
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+pip install -r requirements.txt
+```
+
+### 5. Create environment file
 
 ```bash
 cp .env.example .env
 ```
 
-### Run everything
+Then update values like:
+
+- JWT secret
+- database connection string
+- backend port
+- frontend API URL
+- AI service URL
+
+### 6. Run with Docker (recommended)
+
+From the repository root:
 
 ```bash
 docker compose up --build
 ```
 
-Then access:
+This starts the app stack together.
+
+### 7. Run manually (development mode)
+
+#### Terminal 1: backend
+
+```bash
+cd backend
+npm run dev
+```
+
+#### Terminal 2: frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+#### Terminal 3: AI service
+
+```bash
+cd ai-service
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Windows setup and run instructions
+
+If you are using Windows PowerShell or Command Prompt:
+
+### PowerShell
+
+```powershell
+git clone https://github.com/nandubodra/SevaSathi.git
+cd SevaSathi
+
+cd frontend
+npm install
+
+cd ..\backend
+npm install
+
+cd ..\ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Then in separate terminals:
+
+```powershell
+cd backend
+npm run dev
+```
+
+```powershell
+cd frontend
+npm run dev
+```
+
+```powershell
+cd ai-service
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Command Prompt
+
+```cmd
+git clone https://github.com/nandubodra/SevaSathi.git
+cd SevaSathi
+
+cd frontend
+npm install
+
+cd ..\backend
+npm install
+
+cd ..\ai-service
+python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
+Then run each service in a different terminal:
+
+```cmd
+cd backend
+npm run dev
+```
+
+```cmd
+cd frontend
+npm run dev
+```
+
+```cmd
+cd ai-service
+.venv\Scripts\activate.bat
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Access URLs
+
+After running the app:
 
 - Frontend: http://localhost:3000
-- Backend: http://localhost:4000
+- Backend API: http://localhost:4000
 - AI Service: http://localhost:8000
+
+## Example usage flow
+
+1. Open the frontend.
+2. Register or log in.
+3. Select language: Hindi / English / Bhojpuri / Bengali / Punjabi.
+4. Type or speak: "Mujhe income certificate banana hai."
+5. Review the service guidance and eligibility explanation.
+6. Upload required documents.
+7. Wait for OCR, extraction, and validation.
+8. Review autofilled form data.
+9. Give explicit consent.
+10. Submit through the configured provider adapter.
+11. Track application status and handle corrections or retries.
+
+## Local testing checklist
+
+Before production use, verify:
+
+- frontend loads without errors
+- backend health endpoint works
+- AI service health route responds
+- service discovery returns the correct catalog
+- document upload endpoint accepts valid files
+- form review flow executes correctly
+- consent is required before submission
+- application state changes are tracked correctly
+- audit log records activity
+- human escalation works for unresolved issues
 
 ## API overview
 
